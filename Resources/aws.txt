@@ -1,0 +1,83 @@
+aws --version
+aws configure
+aws iam list-users // show users of aws (get from aws, not local user)
+aws iam list-users --region // to do the command on specific region
+
+chmod 0400 <path to key (.pem file)>
+ssh ec2-user@<instance_ip> -i <path to key (.pem file)>
+
+sudo yum install -y bind-utils
+nslookup <domain name>
+dig <domain name>
+
+//imds v2, on ec2 instance run
+TOKEN=`curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600"`
+curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/
+// to get access key id and access key secret of iam role assigned to ec2 instance
+curl -H "X-aws-ec2-metadata-token: $TOKEN" -v http://169.254.169.254/latest/meta-data/identity-credentials/ec2/security-credentials/ec2-instance
+
+// having multiple aws accounts on aws cli
+cd ~/.aws
+cat config
+cat credentials
+aws configure --profile <profile name>
+<aws command> --profile <profile name>
+ex: aws s3 ls --profile <profile name>
+
+// aws cli with mfa
+aws sts get-session-token --serial-number <mfa arn> -token-code <2fa code from generator app>
+// get access key id and access ket secret and session token from output
+aws configure --profile <profile name>
+// enter access key id and access key secret
+// on ~/.aws/credentials add next line inder new profile
+aws_session_token = <session token>
+// now run 
+<aws command> --profile <profile name>
+
+// CORS permission json
+[
+    {
+        "AllowedHeaders": [
+            "Authorization"
+        ],
+        "AllowedMethods": [
+            "GET"
+        ],
+        "AllowedOrigins": [
+            "<url of first bucket with http://...without slash at the end>"
+        ],
+        "ExposeHeaders": [],
+        "MaxAgeSeconds": 3000
+    }
+]
+
+// s3 mfa delete
+// generate root access keys
+aws configure --profile root-mfa-delete-demo
+// enable mfa delete
+aws s3api put-bucket-versioning --bucket <bucket_name> --versioning-configuration Status=Enabled,MFADelete=Enabled --mfa "<arn-of-mfa-device> <mfa-code>" --profile root-mfa-delete-demo
+// disable mfa delete
+aws s3api put-bucket-versioning --bucket <bucket_name> --versioning-configuration Status=Enabled,MFADelete=Disabled --mfa "<arn-of-mfa-device> <mfa-code>" --profile root-mfa-delete-demo
+// delete the root credentials in the IAM console!!!
+
+// Kinesis
+// create data stream on aws console
+// open aws cloudshell
+aws --version
+// put message on stream (provider)
+aws kinesis put-record --stream-name <data stream name> --partition-key <partitionkey> --data "<message text>" --cli-binary-format raw-in-base64-out
+// get message on stream (consumer)
+aws kinesis describe-stream --stream-name test
+// get shared id from output
+aws kinesis get-shard-iterator --stream-name <data stream name> --shard-id <shared id> --shard-iterator-type TRIM_HORIZON
+//for next iteration :
+aws kinesis get-records --shard-iterator <shard-iterator from output of previous command>
+
+// lambda synchronus invocation
+// open cloudshell
+aws lambda invoke --function-name demo-lambda --cli-binary-format raw-in-base64-out --payload '{"key1": "value1", "key2": "value2", "key3": "value3" }' --region eu-west-1 response.json
+
+// lambda Asynchronus invocation
+// open cloudshell
+aws lambda invoke --function-name demo-lambda --cli-binary-format raw-in-base64-out --payload '{"key1": "value1", "key2": "value2", "key3": "value3" }' --invocation-type Event --region eu-west-1 response.json
+
